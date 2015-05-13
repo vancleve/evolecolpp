@@ -191,6 +191,19 @@ boost::python::list sfs(GSLrng & rng,const poptype & pop,const unsigned & nsam)
   return rv;
 }
 
+// Calculate phenotypes
+boost::python::list phenotypes(const poptype & pop)
+{
+  boost::python::list phenos;
+  
+  for( auto & dip : pop.diploids ) 
+    { 
+      phenos.append(KTfwd::additive_diploid()(dip,2.)); 
+    }
+
+  return phenos;
+}
+
 //Now, we can expose the stuff to python
 BOOST_PYTHON_MODULE(social_evol)
 {
@@ -205,5 +218,7 @@ BOOST_PYTHON_MODULE(social_evol)
   def("evolve",evolve);
   //And one to get the sfs of a sample
   def("sfs",sfs);
+  // get phenotypes of population
+  def("phenotypes", phenotypes);
 }
 
