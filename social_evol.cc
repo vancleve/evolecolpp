@@ -106,6 +106,13 @@ struct snowdrift_diploid
 
 //END FWDPP-related stuff
 
+// Calculate phenotype from infinite sites model using additive effects
+double phenotypef_infsites( const diploid_t dip )
+{
+  // ensure range is (0, 1)
+  return std::max(0.0, std::min(1.0, KTfwd::additive_diploid()(dip,2.)));
+}
+
 //Evolve the population for some amount of time with mutation and recombination
 poptype evolve( GSLrng & rng,
 		const unsigned & N,
@@ -142,7 +149,7 @@ poptype evolve( GSLrng & rng,
 						    mu,mu_del,
 						    [&rng](){return gsl_rng_uniform(rng);},
 						    [&rng](){return 0.1*(0.5-gsl_rng_uniform(rng));},
-						    [](){return 2.;}),
+						    [](){return 1.;}),
 					  std::bind(KTfwd::genetics101(),
 						    std::placeholders::_1,std::placeholders::_2,
 						    &pop.gametes,
@@ -181,7 +188,7 @@ double evolve_step( GSLrng & rng,
   for( auto & dip : pop.diploids ) 
     { 
       dip.i = i; 
-      phenotypes[i++] = KTfwd::additive_diploid()(dip,2.); 
+      phenotypes[i++] = phenotypef_infsites(dip); 
     }
 
   double wbar = KTfwd::sample_diploid(rng,
@@ -265,7 +272,7 @@ boost::python::list phenotypes(const poptype & pop)
   
   for( auto & dip : pop.diploids ) 
     { 
-      phenos.append(KTfwd::additive_diploid()(dip,2.)); 
+      phenos.append(phenotypef_infsites(dip)); 
     }
 
   return phenos;
