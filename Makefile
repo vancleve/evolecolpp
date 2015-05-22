@@ -4,3 +4,5 @@ LDFLAGS=`python-config --ldflags` -lboost_python -lboost_system -lgsl -lgslcblas
 all: social_evol.o
 	$(CXX) -shared -o social_evol.so social_evol.o $(LDFLAGS)
 
+clean:
+	rm -f *.o *.so

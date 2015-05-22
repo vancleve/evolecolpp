@@ -1,11 +1,12 @@
 import fwdpp_boost_python
+import sys
 
 SEED=10
 gsl_rng=fwdpp_boost_python.GSLrng(SEED)
 NSAM=20
 N=500
 # Assertion failed: (this->m_holder.m_size > n), function operator[], file /usr/local/include/boost/container/vector.hpp, line 1488
-GENS=970
+GENS=int(sys.argv[1])
 # Success
 #GENS=971
 THETA=50
