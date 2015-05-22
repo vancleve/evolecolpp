@@ -11,10 +11,12 @@ In addition to the usual fwdpp depdencies, we need boost.python.
 #include <boost/unordered_set.hpp>
 #include <boost/functional/hash.hpp>
 
-//Main fwdpp library header
+// Include custom mutation header
+#include<mutation_inf_alleles.hpp>
+// Main fwdpp library header
 #include <fwdpp/diploid.hh>
-//Include the necessary "sugar" components
-//We need to get the 'deep' version of singlepop, as we need to make a custom singlepop_serialized_t for our sim
+// Include the necessary "sugar" components
+// We need to get the 'deep' version of singlepop, as we need to make a custom singlepop_serialized_t for our sim
 #include <fwdpp/sugar/singlepop/singlepop.hpp>
 #include <fwdpp/sugar/GSLrng_t.hpp>
 #include <fwdpp/sugar/serialization.hpp>
@@ -98,76 +100,6 @@ struct snowdrift_diploid
 	  }
       }
     return fitness/double(N-1);
-  }
-};
-
-// FWDPP overloads
-namespace KTfwd {
-  
-  // Overload mutate_gametes for infinite alleles mutations
-
-  // Nominally, the function generates mutations, saves them in mutation list,
-  // and adds them to the mutation list for each gamete
-  poptype::glist_t::iterator mutate_gamete( gsl_rng * r,
-					    const double & mu,
-					    poptype::glist_t * gametes,
-					    poptype::mlist_t * mutations, 
-					    poptype::glist_t::iterator & g,
-					    const std::function<mtype(poptype::glist_t::iterator &)> & mmodel,
-					    const std::function<poptype::mlist_t::iterator(poptype::mutation_t && , poptype::mlist_t *)> & mpolicy,
-					    const std::function<poptype::glist_t::iterator(poptype::gamete_t && , poptype::glist_t *)> & gpolicy)
-  {
-    assert( g != gametes->end() );
-    unsigned newmut = gsl_ran_flat(r,0,1) < mu;
-    if ( newmut )
-      {
-	assert( g->n > 0 );
-	g->n--;
-	poptype::gamete_t ng(1); // create new gamete in a single copy with no mutations
-
-	// generate new mutation
-	mtype m = mmodel(g); 
-
-	// add new mutation to mutation list
-	poptype::mlist_t::iterator mitr = mpolicy(std::move(m),mutations);
-
-	// add new mutation to gamete mutation list
-	if (m.neutral)
-	  {
-	    ng.mutations.insert( ng.mutations.end(), mitr );
-	  }
-	else
-	  {
-	    ng.smutations.insert( ng.mutations.end(), mitr );
-	  }
-
-	// add new gamete to gamete list
-	return gpolicy(std::move(ng),gametes);
-      }
-    return g;
-  }
-
-}
-//END FWDPP 
-
-struct inf_alleles
-{
-  inline mtype operator()( gsl_rng * r,
-			   poptype::lookup_table_t * lookup,
-			   const poptype::glist_t::iterator & g,
-			   std::function<double(gsl_rng *, double)> & mutpolicy) const
-  {
-    double mutval;
-    gamete_t::mcont_iterator mitr = g->smutations.begin();
-    
-    mutval = mutpolicy(r, (*mitr)->s);
-    while(lookup->find(mutval) != lookup->end())
-      {
-	mutval = mutpolicy(r, (*mitr)->s);
-      }
-    
-    lookup->insert(mutval);
-    return mtype(mutval,mutval,1);
   }
 };
 
