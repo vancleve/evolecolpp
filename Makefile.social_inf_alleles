@@ -1,4 +1,4 @@
-CXXFLAGS=-fPIC -Wall -W -g -O0 -I. -I/Users/vancleve/science/code/fwdpp `python-config --includes` -std=c++11 
+CXXFLAGS=-fPIC -Wall -W -O3 -I. -I/Users/vancleve/science/code/fwdpp `python-config --includes` -std=c++11 
 LDFLAGS=`python-config --ldflags` -lboost_python -lboost_system -lgsl -lgslcblas 
 
 all: social_evol_inf_alleles.o
