@@ -136,24 +136,29 @@ double ran_trunc_laplace( gsl_rng * r,const double & mean, const double & scale,
  */
 struct inf_alleles : public KTfwd::tags::gamete_dependent
 {
-  gsl_rng * r;
-  poptype::lookup_table_t * lookup;
-  double scale,lo,hi;
-  inf_alleles(gsl_rng * __r,
-	      poptype::lookup_table_t * __lookup,
-	      const double & __scale,
-	      	      const double & __lo,
-	      const double & __hi): r(__r),lookup(__lookup),
-				    scale(__scale),lo(__lo),hi(__hi)
-  {
-  }
+  // gsl_rng * r;
+  // poptype::lookup_table_t * lookup;
+  // double scale,lo,hi;
+  // inf_alleles(gsl_rng * __r,
+  // 	      poptype::lookup_table_t * __lookup,
+  // 	      const double & __scale,
+  // 	      	      const double & __lo,
+  // 	      const double & __hi): r(__r),lookup(__lookup),
+  // 				    scale(__scale),lo(__lo),hi(__hi)
+  // {
+  // }
   using result_type = mtype;
   template< typename iterator_type,
 	    typename mlist_t >
   //typename lookup_table_t,
   //typename laplace>  
-  typename mlist_t::value_type operator()( iterator_type & g,
-					   mlist_t * mutations ) const
+  result_type operator()( iterator_type & g,
+			  mlist_t * mutations,
+			  gsl_rng * r,
+			  poptype::lookup_table_t * lookup,
+			  const double & scale,
+			  const double & lo,
+			  const double & hi) const
   {
     //KRT: Danger: what to do about empty gametes?
     //typename iterator_type::value_type::mcont_iterator mitr = g->smutations.begin();
@@ -191,6 +196,19 @@ struct inf_alleles : public KTfwd::tags::gamete_dependent
   }
 };
 
+template<typename... fxn>
+struct mmodel_wrapper : public KTfwd::tags::gamete_dependent
+{
+  std::function<fxn...> f;
+  using result_type = typename std::function<fxn...>::result_type;
+  template<typename X>
+  mmodel_wrapper( X x ) : f( std::function<fxn...>(x) ) {}
+  template<typename... Args>
+  result_type inline operator()( Args... a ) const
+  {
+    return f(a...);
+  }
+};
 
 // Calculate phnenotype for sinlge "locus"
 double phenotypef_1locus( const diploid_t & dip )
@@ -237,7 +255,14 @@ double evolve_step( GSLrng & rng,
     }
 
   //KRT
-  inf_alleles mmodel(rng,&pop.mut_lookup,scale,0.,1.);
+  mmodel_wrapper<mtype(poptype::gamete_t &,poptype::mlist_t *)> mm(std::bind(inf_alleles(),
+									     std::placeholders::_1,
+									     std::placeholders::_2,
+									     rng,
+									     &pop.mut_lookup,
+									     scale,
+									     0.,
+									     1.));
   double wbar =
     KTfwd::sample_diploid(rng,
 			  &pop.gametes,
@@ -245,11 +270,11 @@ double evolve_step( GSLrng & rng,
 			  &pop.mutations,
 			  pop.N,
 			  mu,
-
 			  // infinite alleles mutation model where mutations have
 			  // truncated laplace distribution on (0,1)
 			  // KRT
-			  mmodel,
+			  mm,
+			  //mmodel,
 
 			  //KRT: If you just pass recrate = 0. to the regular function, that'll be rather efficient, too.
 			  //It'd be interesting to see if this is faster
