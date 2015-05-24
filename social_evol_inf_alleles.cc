@@ -12,18 +12,9 @@ In addition to the usual fwdpp depdencies, we need boost.python.
 #include <boost/functional/hash.hpp>
 
 // Include custom mutation header
-/*
-  Comments from KRT:
-  Your mutation model depends on the current state of a gamete,
-  which means your mutation model should inherit from KTfwd::tags::gamete_dependent.
-  More on this below.
+#include<mutation_inf_alleles.hpp>
+//#include<mutation.hpp>
 
-  Also: it is totally cool to copy the library headers, etc.,  but you probably want to 
-  change the ifndef/define symbols, else you are hiding the fwdpp versions.  Hiding 
-  them may or may not be desirable, etc., but I make no guarantee that they will remain constant
-  across library versions, etc.
- */
-//#include<mutation_inf_alleles.hpp>
 // Main fwdpp library header
 #include <fwdpp/diploid.hh>
 // Include the necessary "sugar" components
@@ -115,19 +106,14 @@ struct snowdrift_diploid
 };
 
 // Truncated Laplace distribution using rejection method (inefficient)
-/*
-  KRT: pass const refs whenever possible -- over the course of a sim,
-  this function will copy 4 doubles approximately one gazillion times.
-  I'm guessing that you'd notice a difference if profiling the code.
-*/
-double ran_trunc_laplace( gsl_rng * r,const double & mean, const double & scale, const double & lo, const double & hi )
+double ran_trunc_laplace( gsl_rng * r, const double & mean, const double & scale, const double & lo, const double & hi )
 {
   double rv = mean + gsl_ran_laplace(r, scale);
-  while (rv > hi && rv < lo)
+  while (rv > hi || rv < lo)
     {
       rv = mean + gsl_ran_laplace(r, scale);
     }
-  return mean + gsl_ran_laplace(r, scale);
+  return rv;
 }
 
 /*
@@ -136,22 +122,9 @@ double ran_trunc_laplace( gsl_rng * r,const double & mean, const double & scale,
  */
 struct inf_alleles : public KTfwd::tags::gamete_dependent
 {
-  // gsl_rng * r;
-  // poptype::lookup_table_t * lookup;
-  // double scale,lo,hi;
-  // inf_alleles(gsl_rng * __r,
-  // 	      poptype::lookup_table_t * __lookup,
-  // 	      const double & __scale,
-  // 	      	      const double & __lo,
-  // 	      const double & __hi): r(__r),lookup(__lookup),
-  // 				    scale(__scale),lo(__lo),hi(__hi)
-  // {
-  // }
   using result_type = mtype;
   template< typename iterator_type,
 	    typename mlist_t >
-  //typename lookup_table_t,
-  //typename laplace>  
   result_type operator()( iterator_type & g,
 			  mlist_t * mutations,
 			  gsl_rng * r,
@@ -160,39 +133,19 @@ struct inf_alleles : public KTfwd::tags::gamete_dependent
 			  const double & lo,
 			  const double & hi) const
   {
-    //KRT: Danger: what to do about empty gametes?
-    //typename iterator_type::value_type::mcont_iterator mitr = g->smutations.begin();
     auto mitr = g.smutations.begin();
 
-    //KRT: if current gamete is empty, return something, otherwise...
-    if(mitr==g.smutations.end())
-      {
-	//The 0.5 here is a total HACK
-	double mutval = ran_trunc_laplace(r,0.5,scale,lo,hi);
-	while(lookup->find(mutval) != lookup->end())
-	  {
-	    mutval = ran_trunc_laplace(r,0.5,scale,lo,hi);
-	    //mutval = mmodel(r, (*mitr)->s);
-	  }
-	return result_type(mutval,mutval,1);
-      }
+    // Make sure mutation list is not emppty. This requires proper initialization of the population.
+    assert(mitr!=g.smutations.end());
 
-    /*
-      KRT: ...this will segfault if g.smutations is empty, as you
-      will dereference a pointer to g.smutations.end(), which may
-      go 'boom'.
-     */
     double mutval = ran_trunc_laplace(r,(*mitr)->s,scale,lo,hi);
-    //mutval = mmodel(r, (*mitr)->s);
     while(lookup->find(mutval) != lookup->end())
       {
 	mutval = ran_trunc_laplace(r,(*mitr)->s,scale,lo,hi);
-	//mutval = mmodel(r, (*mitr)->s);
       }
-    
+
     lookup->insert(mutval);
-    return **mitr;
-    //return typename mlist_t::value_type(mutval,mutval,1);
+    return result_type(mutval,mutval,1);
   }
 };
 
@@ -240,7 +193,6 @@ poptype pop_init( const unsigned & N,
 // Evolve population one generation using infinite alleles mutation model
 double evolve_step( GSLrng & rng,
 		    poptype & pop,
-		    const unsigned & generation,
 		    const double & mu, const double & scale,
 		    const double & b1, const double & b2, const double & c1, const double & c2)
 {
@@ -254,7 +206,7 @@ double evolve_step( GSLrng & rng,
       phenotypes[i++] = phenotypef_1locus(dip); 
     }
 
-  //KRT
+  // wrap inf_alleles function with its parameters
   mmodel_wrapper<mtype(poptype::gamete_t &,poptype::mlist_t *)> mm(std::bind(inf_alleles(),
 									     std::placeholders::_1,
 									     std::placeholders::_2,
@@ -272,15 +224,10 @@ double evolve_step( GSLrng & rng,
 			  mu,
 			  // infinite alleles mutation model where mutations have
 			  // truncated laplace distribution on (0,1)
-			  // KRT
 			  mm,
-			  //mmodel,
 
-			  //KRT: If you just pass recrate = 0. to the regular function, that'll be rather efficient, too.
-			  //It'd be interesting to see if this is faster
-			  // Recombination policy: do nothing, return zero breaks
 			  [](poptype::glist_t::iterator & ,   
-			     poptype::glist_t::iterator & ){return 0;}, //KRT: deleted g1 and g2 here to silence warnings re:unused variables.
+			     poptype::glist_t::iterator & ){return 0;},
 
 			  // Mutation insertion policy
 			  std::bind(KTfwd::insert_at_end<poptype::mutation_t,
@@ -298,7 +245,7 @@ double evolve_step( GSLrng & rng,
 				    b1, b2, c1, c2),
 			  
 			  // Mutation removal from gamete policy: never remove
-			  []( mlist_t::iterator &  ) { return false; } //KRT: silence warning
+			  []( mlist_t::iterator &  ) { return false; }
 			  );
   
   KTfwd::remove_lost(&pop.mutations, &pop.mut_lookup);
@@ -322,7 +269,7 @@ boost::python::list phenotypes(const poptype & pop)
 }
 
 //Now, we can expose the stuff to python
-BOOST_PYTHON_MODULE(social_evol)
+BOOST_PYTHON_MODULE(social_evol_inf_alleles)
 {
   //Expose the type based on fwdpp's "sugar" layer
   class_<poptype>("poptype",init<unsigned>())
