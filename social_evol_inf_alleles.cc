@@ -83,7 +83,8 @@ using poptype = KTfwd::sugar::singlepop_serialized<mtype,
 struct snowdrift_diploid
 {
   using result_type = double;
-  inline result_type operator()( const poptype::dipvector_t::const_iterator dip,
+  inline result_type operator()( gsl_rng * r,
+				 const poptype::dipvector_t::const_iterator dip,
 				 const std::vector<double> & phenotypes, 
 				 const double & b1, const double & b2,
 				 const double & c1, const double & c2) const
@@ -91,17 +92,19 @@ struct snowdrift_diploid
     unsigned N = phenotypes.size();
     double zself = phenotypes[dip->i];
     result_type fitness = 0;
-    for (unsigned j = 0; j < N; ++j)	  
+
+    // pick random partner
+    unsigned partner = gsl_rng_uniform_int(r, N);
+    while (partner == dip->i)
       {
-	if (dip->i != j)
-	  {
-	    double zpair = zself+phenotypes[j];
-	    // Payoff function from Fig 1
-	    double a = b1*zpair + b2*zpair*zpair - c1*zself - c2*zself*zself;
-	    fitness += 1 + std::max(a, 0.0);
-	  }
+	partner = gsl_rng_uniform_int(r, N);
       }
-    return fitness/double(N-1);
+	   
+    double zpair = zself+phenotypes[partner];
+    // Payoff function from Fig 1
+    fitness += 1 + b1*zpair + b2*zpair*zpair - c1*zself - c2*zself*zself;
+    
+    return std::max(fitness, 0.0);
   }
 };
 
@@ -240,6 +243,7 @@ double evolve_step( GSLrng & rng,
 			  
 			  // Fitness function
 			  std::bind(snowdrift_diploid(),
+				    rng,
 				    std::placeholders::_1,
 				    std::cref(phenotypes),
 				    b1, b2, c1, c2),
