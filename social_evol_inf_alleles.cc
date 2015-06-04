@@ -4,11 +4,13 @@ In addition to the usual fwdpp depdencies, we need boost.python.
 
 #include <limits>
 #include <algorithm>
+#include <cmath>
 #include <boost/python.hpp>
 #include <boost/container/list.hpp>
 #include <boost/container/vector.hpp>
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
 #include <boost/functional/hash.hpp>
 
 // Include custom mutation header
@@ -123,7 +125,7 @@ double ran_trunc_laplace( gsl_rng * r, const double & mean, const double & scale
   KTR: This should be a gamete-dependent mutation model, which was introduced in 0.3.0:
   http://molpopgen.github.io/fwdpp/doc/html/d1/d7a/md_md_policies.html
  */
-struct inf_alleles : public KTfwd::tags::gamete_dependent
+struct inf_alleles
 {
   using result_type = mtype;
   template< typename iterator_type,
@@ -153,7 +155,7 @@ struct inf_alleles : public KTfwd::tags::gamete_dependent
 };
 
 template<typename... fxn>
-struct mmodel_wrapper : public KTfwd::tags::gamete_dependent
+struct mmodel_wrapper
 {
   std::function<fxn...> f;
   using result_type = typename std::function<fxn...>::result_type;
@@ -176,21 +178,13 @@ double phenotypef_1locus( const diploid_t & dip )
   return pval;
 }
 
-// Initialize population to be homogeneous with mutation value mutval0
-poptype pop_init( const unsigned & N,
-		  const double & mutval0)
+// Effective "haploid" phenotype: just use the first gamete
+double phenotypef_1locus_haploid( const diploid_t & dip )
 {
-  poptype pop(N); // population initially is single gamete in 2*N copies
-  mtype mut0(mutval0, mutval0, 2*N); // initial mutation also in 2*N copies
+  gamete_t::mcont_iterator m1 = dip.first->smutations.begin();
 
-  // insert mutation into population mutation list
-  poptype::mlist_t::iterator mitr = pop.mutations.insert(pop.mutations.end(), std::move(mut0));
-
-  // insert mutation in mutation list of gamete
-  poptype::glist_t::iterator g0 = pop.gametes.begin();
-  g0->smutations.insert( g0->smutations.begin(), mitr );
-
-  return pop;
+  double pval = (*m1)->s;
+  return pval;
 }
 
 // Evolve population one generation using infinite alleles mutation model
@@ -206,7 +200,7 @@ double evolve_step( GSLrng & rng,
   for( auto & dip : pop.diploids ) 
     { 
       dip.i = i; 
-      phenotypes[i++] = phenotypef_1locus(dip); 
+      phenotypes[i++] = phenotypef_1locus_haploid(dip); 
     }
 
   // wrap inf_alleles function with its parameters
@@ -266,10 +260,116 @@ boost::python::list phenotypes(const poptype & pop)
   
   for( auto & dip : pop.diploids ) 
     { 
-      phenos.append(phenotypef_1locus(dip)); 
+      phenos.append(phenotypef_1locus_haploid(dip)); 
     }
 
   return phenos;
+}
+
+// Initialize population to be homogeneous with mutation value mutval0
+poptype pop_init( const unsigned & N,
+		  const double & mutval0)
+{
+  poptype pop(N); // population initially is single gamete in 2*N copies
+  mtype mut0(mutval0, mutval0, 2*N); // initial mutation also in 2*N copies
+  pop.mut_lookup.insert(mutval0); // insert mutation value into lookup table
+  
+  // insert mutation into population mutation list
+  poptype::mlist_t::iterator mitr = pop.mutations.insert(pop.mutations.end(), std::move(mut0));
+
+  // insert mutation in mutation list of gamete
+  poptype::glist_t::iterator g0 = pop.gametes.begin();
+  g0->smutations.insert( g0->smutations.begin(), mitr );
+
+  return pop;
+}
+
+// Initialize population to given distribution of mutation values
+poptype pop_init_dist( const unsigned & N,
+		       const boost::python::list & mutvals)
+{
+  double mutval;
+  poptype pop(N); // population initially is single gamete in 2*N copies
+  
+  // set initial gamete to zero count since it will be replaced
+  poptype::glist_t::iterator g0 = pop.gametes.begin();
+  g0->n = 0;
+
+  unsigned i = 0;
+  boost::unordered_map<double, poptype::glist_t::iterator, boost::hash<double>, KTfwd::equal_eps> new_gametes;
+  // loop over all diploids creating a new gametes and new mutations
+  // first gamete in diploid
+  for ( auto & dip : pop.diploids ) 
+    {
+      mutval = boost::python::extract<double>(mutvals[i]); i++; // convert mutation value
+      auto search = new_gametes.find(mutval);
+      if (search == new_gametes.end()) // gamete with mutval hasn't been seen yet
+	{
+	  poptype::gamete_t g(1); // new gamete
+	  mtype mut(mutval, mutval, 1); // create new mutation object
+	  pop.mut_lookup.insert(mutval); // save mutation values in lookup table
+
+	  // insert new gametes into population gamete list
+	  poptype::glist_t::iterator gitr = pop.gametes.insert(pop.gametes.end(), std::move(g));
+      
+	  // insert mutation into population mutation list
+	  poptype::mlist_t::iterator mitr = pop.mutations.insert(pop.mutations.end(), std::move(mut));
+
+	  // insert mutation in mutation list of gamete
+	  gitr->smutations.insert( gitr->smutations.begin(), mitr );
+
+	  // insert gamete into map and assign to diploid
+	  new_gametes[mutval] = gitr;
+	  dip.first  = gitr;
+	}
+      else // gamete has been seen
+	{
+	  auto gam = search->second;
+	  auto mut = gam->smutations.begin();
+
+	  gam->n++; // increment gamete
+	  (*mut)->n++; // increment mutation
+
+	  dip.first = gam;
+	}
+    }
+  // second gamete
+  for ( auto & dip : pop.diploids ) 
+    {
+      mutval = boost::python::extract<double>(mutvals[i]); i++; // convert mutation value
+      auto search = new_gametes.find(mutval);
+      if (search == new_gametes.end()) // gamete with mutval hasn't been seen yet
+	{
+	  poptype::gamete_t g(1); // new gamete
+	  mtype mut(mutval, mutval, 1); // create new mutation object
+	  pop.mut_lookup.insert(mutval); // save mutation values in lookup table
+
+	  // insert new gametes into population gamete list
+	  poptype::glist_t::iterator gitr = pop.gametes.insert(pop.gametes.end(), std::move(g));
+      
+	  // insert mutation into population mutation list
+	  poptype::mlist_t::iterator mitr = pop.mutations.insert(pop.mutations.end(), std::move(mut));
+
+	  // insert mutation in mutation list of gamete
+	  gitr->smutations.insert( gitr->smutations.begin(), mitr );
+
+	  // insert gamete into map and assign to diploid
+	  new_gametes[mutval] = gitr;
+	  dip.second  = gitr;
+	}
+      else // gamete has been seen
+	{
+	  auto gam = search->second;
+	  auto mut = gam->smutations.begin();
+
+	  gam->n++; // increment gamete
+	  (*mut)->n++; // increment mutation
+
+	  dip.second = gam;
+	}
+    }
+  
+  return pop;
 }
 
 //Now, we can expose the stuff to python
@@ -284,6 +384,7 @@ BOOST_PYTHON_MODULE(social_evol_inf_alleles)
     ;
   //Expose the function to run the model
   def("pop_init",pop_init);
+  def("pop_init_dist",pop_init_dist);
   def("evolve_step",evolve_step);
   def("phenotypes", phenotypes);
 }

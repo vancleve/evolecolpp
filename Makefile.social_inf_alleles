@@ -1,7 +1,13 @@
-CXXFLAGS=-fPIC -Wall -W -O3 -I. -I/Users/vancleve/science/code/fwdpp `python-config --includes` -std=c++11 
-LDFLAGS=`python-config --ldflags` -lboost_python -lboost_system -lgsl -lgslcblas 
+CXXFLAGS = -fPIC -Wall -Wextra -I. -I/Users/vancleve/science/code/fwdpp `python-config --includes` -std=c++11 
+LDFLAGS = `python-config --ldflags` -lboost_python -lboost_system -lgsl -lgslcblas 
 
-all: social_evol_inf_alleles.o
+debug: social_evol_inf_alleles
+debug: CXXFLAGS += -g -O0
+
+nodebug: social_evol_inf_alleles
+nodebug: CXXFLAGS += -O3 -DNDEBUG
+
+social_evol_inf_alleles: social_evol_inf_alleles.o
 	$(CXX) -shared -o social_evol_inf_alleles.so social_evol_inf_alleles.o $(LDFLAGS)
 
 clean:

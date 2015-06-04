@@ -12,7 +12,6 @@
 #include <boost/container/vector.hpp>
 #endif
 
-#include <fwdpp/tags/mutation_tags.hpp>
 #include <vector>
 
 namespace KTfwd
