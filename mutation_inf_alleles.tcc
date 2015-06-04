@@ -43,7 +43,7 @@ namespace KTfwd
 	typename iterator_type::value_type ng(1); // create new gamete in a single copy with no mutations
 
 	// generate new mutation
-	auto m = mmodel(*g,mutations); 
+	auto m = mmodel(*g); 
 
 	// add new mutation to mutation list
 	auto mitr = mpolicy(std::move(m),mutations);
