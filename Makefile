@@ -5,14 +5,17 @@ ifdef FWDPP
 	CXXFLAGS += -I$(FWDPP)
 endif
 
-nodebug: cooperation_snowdrift
+nodebug: cooperation_snowdrift cooperation_snowdrift_metapop
 nodebug: CXXFLAGS += -O3 -DNDEBUG
 
-debug: cooperation_snowdrift
+debug: cooperation_snowdrift cooperation_snowdrift_metapop
 debug: CXXFLAGS += -g -O0
 
 cooperation_snowdrift: cooperation_snowdrift.o
 	$(CXX) -shared -o cooperation_snowdrift.so cooperation_snowdrift.o $(LDFLAGS)
 
+cooperation_snowdrift_metapop: cooperation_snowdrift_metapop.o
+	$(CXX) -shared -o cooperation_snowdrift_metapop.so cooperation_snowdrift_metapop.o $(LDFLAGS)
+
 clean:
-	rm -f cooperation_snowdrift.o cooperation_snowdrift.so
+	rm -f *.o *.so
