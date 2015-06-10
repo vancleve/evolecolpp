@@ -314,8 +314,12 @@ boost::python::list mutations(const poptype & pop)
 poptype pop_init( const boost::python::list & pyNs,
 		  const double & mutval0)
 {
-  std::vector<unsigned> Ns = boost::python::extract<std::vector<unsigned>>(pyNs);
-  unsigned n = Ns.size();
+  unsigned n = boost::python::len(pyNs);
+  std::vector<unsigned> Ns(n, 0);
+  for ( unsigned i = 0 ; i != n ; ++i )
+    {
+      Ns[i] = boost::python::extract<unsigned>(pyNs[i]);
+    }
 
   // total population size
   unsigned nN = 1;
@@ -431,7 +435,7 @@ poptype pop_init( const boost::python::list & pyNs,
 // }
 
 //Now, we can expose the stuff to python
-BOOST_PYTHON_MODULE(cooperation_snowdrift)
+BOOST_PYTHON_MODULE(cooperation_snowdrift_metapop)
 {
   //Expose the type based on fwdpp's "sugar" layer
   class_<poptype>("poptype",init<unsigned *, size_t>())
