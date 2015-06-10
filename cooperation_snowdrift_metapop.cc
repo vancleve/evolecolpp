@@ -27,7 +27,7 @@
   and auto-handles the gsl_rng_free steps, etc.
  */
 using GSLrng = KTfwd::GSLrng_t<KTfwd::GSL_RNG_MT19937>;
-using lookup_t = fwdpp_internal::gsl_ran_discrete_t_ptr;
+using lookup_t = KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr;
 
 //FWDPP-related types
 using mtype = KTfwd::mutation;
@@ -176,14 +176,14 @@ std::vector<lookup_t> mig_island_hard(const double & m, std::vector<double> & wt
 }
 
 // Evolve population one generation using infinite alleles mutation model
-double evolve_step( GSLrng & rng,
-		    poptype & pop,
-		    const double & mu, const double & scale,
-		    const double & m,
-		    const double & b1, const double & b2, const double & c1, const double & c2)
+std::vector<double> evolve_step( GSLrng & rng,
+				 poptype & pop,
+				 const double & mu, const double & scale,
+				 const double & m,
+				 const double & b1, const double & b2, const double & c1, const double & c2)
 {
   unsigned n = pop.Ns.size();
-  std::vector::iterator maxNit = std::max_element(pop.Ns.begin(), pop.Ns.end())
+  std::vector<unsigned>::iterator maxNit = std::max_element(pop.Ns.begin(), pop.Ns.end());
   std::vector<std::vector<double>> phenotypes(n,
 					      std::vector<double>(*maxNit));
   //Fill phenotypes
@@ -192,7 +192,7 @@ double evolve_step( GSLrng & rng,
       for ( unsigned j = 0; j != pop.Ns[i]; j++ )
 	{
 	  pop.diploids[i][j].i = j; 
-	  phenotypes[i][j] = phenotypef_1locus(dippop.diploids[i][j]); 
+	  phenotypes[i][j] = phenotypef_1locus(pop.diploids[i][j]); 
 	}
     }
 
@@ -211,9 +211,9 @@ double evolve_step( GSLrng & rng,
   std::vector<double> wtot(n, 0.0);
   for ( unsigned i = 0; i != n; i++ ) 
     {
-      for ( auto & dip : pop.diploids[i] )
+      for ( auto dptr = pop.diploids[i].begin() ; dptr != pop.diploids[i].end() ; ++dptr )
 	{
-	  wtot[i] += vff[i](dip);
+	  wtot[i] += vff[i](dptr);
 	}
     }
 
@@ -239,7 +239,8 @@ double evolve_step( GSLrng & rng,
 			  
 			  // "null" recombination policy
 			  [](poptype::glist_t::iterator & ,   
-			     poptype::glist_t::iterator & ){return 0;},
+			     poptype::glist_t::iterator & ,
+			     poptype::glist_t *){return 0;},
 
 			  // Mutation insertion policy
 			  std::bind(KTfwd::insert_at_end<poptype::mutation_t,
@@ -250,18 +251,14 @@ double evolve_step( GSLrng & rng,
 			  std::bind(KTfwd::insert_at_end<poptype::gamete_t,poptype::glist_t>,
 				    std::placeholders::_1,std::placeholders::_2),
 			  
-			  // Fitness function
-			  std::bind(snowdrift_diploid(),
-				    rng,
-				    std::placeholders::_1,
-				    std::cref(phenotypes),
-				    b1, b2, c1, c2),
+			  // Vector of fitness functions
+			  vff,
 			  
 			  // Mutation removal from gamete policy: never remove
 			  []( mlist_t::iterator &  ) { return false; },
 
 			  // Migration policy
-			  [&rng, &lookups](unsigned & dest_deme)
+			  [&rng, &lookups](const size_t & dest_deme)
 			  { return gsl_ran_discrete(rng,lookups[dest_deme].get()); }
 			  );
   
@@ -321,7 +318,7 @@ poptype pop_init( const boost::python::list & pyNs,
   unsigned n = Ns.size();
 
   // total population size
-  usigned nN = 1;
+  unsigned nN = 1;
   for (auto & Nval : Ns)
     {
       nN *= Nval;
@@ -437,7 +434,7 @@ poptype pop_init( const boost::python::list & pyNs,
 BOOST_PYTHON_MODULE(cooperation_snowdrift)
 {
   //Expose the type based on fwdpp's "sugar" layer
-  class_<poptype>("poptype",init<unsigned>())
+  class_<poptype>("poptype",init<unsigned *, size_t>())
     .def("clear",&poptype::clear)
     ;
   //Expose the GSL wrapper
