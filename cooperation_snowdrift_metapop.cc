@@ -8,6 +8,7 @@
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 // Include custom mutation header
 #include<mutation_inf_alleles.hpp>
@@ -264,6 +265,12 @@ std::vector<double> evolve_step( GSLrng & rng,
   
   KTfwd::remove_lost(&pop.mutations, &pop.mut_lookup);
 
+  // boost::python::list wbars_list;
+  // for ( auto it = wbars.begin() ; it != wbars.end() ; ++it )
+  //   {
+  //     wbars_list.append(*it);
+  //   }
+  // return wbars_list;
   return wbars;
 }
 
@@ -444,6 +451,9 @@ BOOST_PYTHON_MODULE(cooperation_snowdrift_metapop)
   //Expose the GSL wrapper
   class_<GSLrng>("GSLrng",init<unsigned>())
     ;
+  // Expose std::vector<double>
+  class_<std::vector<double>>("std::vector::double")
+        .def(vector_indexing_suite<std::vector<double>>() );
   //Expose the function to run the model
   def("pop_init",pop_init);
   // def("pop_init_dist",pop_init_dist);
