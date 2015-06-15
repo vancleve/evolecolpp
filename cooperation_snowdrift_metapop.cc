@@ -32,9 +32,9 @@ using lookup_t = KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr;
 
 //FWDPP-related types
 using mtype = KTfwd::mutation;
-using mlist_t = boost::container::list<mtype,boost::pool_allocator<mtype> >;
+using mlist_t = boost::container::list<mtype,boost::fast_pool_allocator<mtype> >;
 using gamete_t = KTfwd::gamete_base<mtype,mlist_t>;
-using glist_t = boost::container::list<gamete_t, boost::pool_allocator<gamete_t>>;
+using glist_t = boost::container::list<gamete_t, boost::fast_pool_allocator<gamete_t>>;
 
 // Custom diploid genotype
 struct diploid_t : public KTfwd::tags::custom_diploid_t
@@ -56,7 +56,6 @@ using poptype = KTfwd::sugar::metapop_serialized<mtype,
 						 mlist_t,
 						 glist_t,
 						 boost::container::vector<diploid_t>,
-						 boost::container::vector<glist_t>,
 						 boost::container::vector<boost::container::vector<diploid_t>>,
 						 boost::container::vector<mtype>,
 						 boost::container::vector<unsigned>,
@@ -342,14 +341,10 @@ poptype pop_init( const boost::python::list & pyNs,
   // insert mutation into population mutation list
   poptype::mlist_t::iterator mitr = pop.mutations.insert(pop.mutations.end(), std::move(mut0));
 
-  // insert mutation into gamete mutation list in each deme
-  for (auto & deme_glist : pop.gametes)
-    {
-      // insert mutation in mutation list of gamete
-      poptype::glist_t::iterator g0 = deme_glist.begin();
-      g0->smutations.insert( g0->smutations.begin(), mitr );
-    }
-
+  // insert mutation into gamete mutation list
+  poptype::glist_t::iterator g0 = pop.gametes.begin();
+  g0->smutations.insert( g0->smutations.begin(), mitr );
+  
   return pop;
 }
 

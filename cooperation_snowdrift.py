@@ -1,21 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cooperation_snowdrift
+import cooperation_snowdrift as snow
 
 def evolve(rng, ngens, N, z0, mu, scale, b1, b2, c1, c2, grain=1):
     if type(z0) == float:
-        P = cooperation_snowdrift.pop_init(N,z0)
+        P = snow.pop_init(N,z0)
     elif type(z0) == list and len(z0) == 2*N:
-        P = cooperation_snowdrift.pop_init_dist(N,z0)
+        P = snow.pop_init_dist(N,z0)
     else:
         print("Initial trait value z0 must be single value of list of length 2N")
         return False
     
-    muts = list((cooperation_snowdrift.mutations(P),))
+    muts = list((snow.mutations(P),))
     for gen in range(ngens):
-        X = cooperation_snowdrift.evolve_step(rng, P, mu, scale, b1, b2, c1, c2)
+        X = snow.evolve_step(rng, P, mu, scale, b1, b2, c1, c2)
         if gen % grain == 0:
-            muts.append(cooperation_snowdrift.mutations(P))
+            muts.append(snow.mutations(P))
     
     return muts
 
@@ -33,10 +33,12 @@ def plotEvolve(vals, bins=100, interpolation='bicubic'):
 
 # fix the seed and initialize the random number generator
 SEED=314
-gsl_rng = cooperation_snowdrift.GSLrng(SEED)
+gsl_rng = snow.GSLrng(SEED)
 
-# run a sim and plot (if not loaded into ipython)
-if '__IPYTHON__' not in vars(__builtins__):
+
+try: # run nothing by default if loaded in ipython
+    __IPYTHON__
+except: # run a sim and plot (if not loaded into ipython)
     # Generate Figure 1A from Doebeli, Hauert, and Killingback (2004, Science)
     # (noisier than Doebeli et al. due to smaller population size and higher mutation)
     w=10 # 'strength' of selection
