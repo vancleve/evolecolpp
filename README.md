@@ -31,9 +31,9 @@ Installing the dependencies normally and install `fwdpp` from [source](http://gi
 
 # Usage
 
-An example simulation and plot can be run via `python cooperation_snowdrift.py`:
+An example simulation and plot can be run via `python cooperation_snowdrift.py` (compare to Figure 1A from Doebeli, Hauert, and Killingback (2004)):
 
-![Evolutionary branching similar to Figure 1A from Doebeli, Hauert, and Killingback (2004)](https://raw.github.com/vancleve/evolecolpp/master/snowdrift_branching.png)
+![](https://raw.github.com/vancleve/evolecolpp/master/snowdrift_branching.png)
 
-Or via `python cooperation_snowdrift_metapop.py`:
-![Evolutionary branching similar to Figure 1A from Wakano and Lehmann (2014)](https://raw.github.com/vancleve/evolecolpp/master/snowdrift_branching_metapop.png)
+Or via `python cooperation_snowdrift_metapop.py` (similar to Figure 1A from Wakano and Lehmann (2014) though with different population size):
+![](https://raw.github.com/vancleve/evolecolpp/master/snowdrift*branching*metapop.png)
