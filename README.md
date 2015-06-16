@@ -36,4 +36,5 @@ An example simulation and plot can be run via `python cooperation_snowdrift.py` 
 ![](https://raw.github.com/vancleve/evolecolpp/master/snowdrift_branching.png)
 
 Or via `python cooperation_snowdrift_metapop.py` (similar to Figure 1A from Wakano and Lehmann (2014) though with different population size):
+
 ![](https://raw.github.com/vancleve/evolecolpp/master/snowdrift*branching*metapop.png)
