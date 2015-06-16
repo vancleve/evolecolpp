@@ -48,4 +48,4 @@ except: # run a sim and plot (if not loaded into ipython)
     w=10 # 'strength' of selection
     muts = evolve(gsl_rng, 40000, 1000, 0.01, 0.1, 0.005, 6.0*w, -1.4*w, 4.56*w, -1.6*w, grain=10)
 
-    plotEvolve(muts)
+    plotEvolve(muts,vmax=500,tmult=10)
