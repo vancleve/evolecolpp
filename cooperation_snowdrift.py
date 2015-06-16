@@ -32,7 +32,7 @@ def plotEvolve(vals, bins=100, interpolation='bicubic', vmin=None, vmax=None, tm
     plt.imshow(phist, aspect='auto', interpolation=interpolation,
                origin='lower', cmap=plt.cm.binary, extent=(min(xe),max(xe),0,nruns),
                vmin=vmin, vmax=vmax)
-    yticks(around(linspace(0,nruns,11),-1), around(linspace(0,(nruns-1)*tmult+1,11),-1))
+    yticks(around(linspace(0,nruns,11),-1), around(linspace(0,(nruns-1)*tmult+1,11),-1).astype('int'))
     plt.show()
 
 # fix the seed and initialize the random number generator
