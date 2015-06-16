@@ -19,17 +19,21 @@ def evolve(rng, ngens, N, z0, mu, scale, b1, b2, c1, c2, grain=1):
     
     return muts
 
-def plotEvolve(vals, bins=100, interpolation='bicubic'):
+def plotEvolve(vals, bins=100, interpolation='bicubic', vmin=None, vmax=None, tmult=1):
     parr = np.array(vals)
-    times = np.repeat(np.arange(parr.shape[0]), parr.shape[1])
-    plist = parr.ravel()
-    
-    phist, xe, ye = np.histogram2d(plist, times, bins=bins, range=[[0,1], [0, len(vals)]])
-    
-    plt.imshow(phist.T, aspect='auto', interpolation=interpolation,
-               origin='lower', cmap=plt.cm.binary, extent=(min(xe),max(xe),min(ye),max(ye)))
-    plt.show()
+    nruns = parr.shape[0]
 
+    phist = np.zeros((nruns,bins))
+    for i in xrange(nruns):
+        ph, xe = np.histogram(parr[i].ravel(), bins=bins, range=[0,1])
+        phist[i] = ph
+
+    extent=(min(xe),max(xe),0,nruns)
+    plt.imshow(phist, aspect='auto', interpolation=interpolation,
+               origin='lower', cmap=plt.cm.binary, extent=(min(xe),max(xe),0,nruns),
+               vmin=vmin, vmax=vmax)
+    yticks(around(linspace(0,nruns,11),-1), around(linspace(0,(nruns-1)*tmult+1,11),-1))
+    plt.show()
 
 # fix the seed and initialize the random number generator
 SEED=314

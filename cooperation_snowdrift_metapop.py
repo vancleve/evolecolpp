@@ -67,6 +67,6 @@ except: # run a sim and plot (if not loaded into ipython)
     # Generate Figure 1A from Doebeli, Hauert, and Killingback (2004, Science)
     # (noisier than Doebeli et al. due to smaller population size and higher mutation)
     w=10 # 'strength' of selection
-    muts = evolve(gsl_rng, 8000, [20]*250, 0.01, 0.05, 0.01, 0.6, 6.0*w, -1.4*w, 4.56*w, -1.6*w, grain=1)
+    muts = evolve(gsl_rng, 8000, [20]*250, 0.01, 0.05, 0.01, 0.6, 6.0*w, -1.4*w, 4.56*w, -1.6*w, grain=10)
     
-    plotEvolve(muts)
+    plotEvolve(muts,vmax=2000)
